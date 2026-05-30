@@ -1,0 +1,250 @@
+function gelatoStreamFormatConfig() as object
+    return {
+        fields: {
+            seasons: "🍂",
+            episodes: "🎞️",
+            languages: "🗣️",
+            audio: "🎧",
+            channels: "🔊",
+            quality: "🎥",
+            visualTags: "📺",
+            size: "📦",
+            bitrate: "📊",
+            releaseGroup: "🏷️",
+            indexer: "📡"
+        },
+        readyMarker: "⚡",
+        notReadyMarker: "❌",
+        boundaryMarkers: ["🎬", "🍂", "🎞️", "🎚️", "🎥", "📺", "⏱️", "🎧", "🔊", "🗣️", "📝", "📦", "📊", "🌱", "📅", "🏷️", "📡", "🎭", "⚡", "❌", "📌", "📰", "⚠️", "💻", "▶️", "🔒", "🔑", "🔍", "ℹ️", "🔥", "✨", "🚀", "💿", "💩"],
+        languageFlags: {
+            "🇬🇧": "EN", "🇺🇸": "EN", "🇮🇹": "IT", "🇫🇷": "FR", "🇩🇪": "DE",
+            "🇪🇸": "ES", "🇯🇵": "JA", "🇰🇷": "KO", "🇨🇳": "ZH", "🇷🇺": "RU",
+            "🇵🇹": "PT", "🇧🇷": "PT", "🇳🇱": "NL", "🇸🇪": "SV", "🇳🇴": "NO",
+            "🇩🇰": "DA", "🇫🇮": "FI", "🇵🇱": "PL", "🇹🇷": "TR", "🇮🇳": "HI",
+            "🇸🇦": "AR", "🇬🇷": "EL", "🇨🇿": "CS", "🇭🇺": "HU", "🇹🇭": "TH",
+            "🇻🇳": "VI", "🇮🇩": "ID", "🇺🇦": "UK", "🇮🇱": "HE", "🇷🇴": "RO"
+        }
+    }
+end function
+
+function gelatoIsReady(name as string) as boolean
+    cfg = gelatoStreamFormatConfig()
+    if Instr(1, name, cfg.readyMarker) > 0 then return true
+    if Instr(1, name, cfg.notReadyMarker) > 0 then return false
+    return Instr(1, LCase(name), "ready") > 0 and Instr(1, LCase(name), "not ready") = 0
+end function
+
+function selectBestMediaSourceId(mediaSources as object) as string
+    if not isValidAndNotEmpty(mediaSources) then return ""
+
+    for each source in mediaSources
+        if isValid(source) and isValid(source.id) and isStringEqual(source.Protocol, "File")
+            return source.id
+        end if
+    end for
+
+    bestId = ""
+    bestScore = -1
+    for each source in mediaSources
+        if isValid(source) and isValid(source.id) and (type(source.Name) = "roString" or type(source.Name) = "String")
+            if gelatoIsReady(source.Name)
+                name = LCase(source.Name)
+                score = 0
+                if Instr(1, name, "4k") > 0 or Instr(1, name, "2160") > 0 or Instr(1, name, "uhd") > 0
+                    score = 2
+                else if Instr(1, name, "1080") > 0 or Instr(1, name, "fhd") > 0
+                    score = 1
+                end if
+                if score > bestScore
+                    bestScore = score
+                    bestId = source.id
+                end if
+            end if
+        end if
+    end for
+
+    return bestId
+end function
+
+function gelatoBuildStreamLines(rawName as object, source as object) as object
+    name = ""
+    if type(rawName) = "roString" or type(rawName) = "String" then name = rawName
+
+    cfg = gelatoStreamFormatConfig()
+    field = cfg.fields
+    bounds = cfg.boundaryMarkers
+
+    line1Parts = []
+    resolution = gelatoExtractResolution(name)
+    if resolution <> "" then line1Parts.push(resolution)
+
+    if isValid(source) and isStringEqual(source.Protocol, "File")
+        line1Parts.push(tr("Local File"))
+    else if name <> ""
+        if gelatoIsReady(name)
+            line1Parts.push(tr("Ready"))
+        else if Instr(1, name, cfg.notReadyMarker) > 0
+            line1Parts.push(tr("Not Ready"))
+        end if
+    end if
+
+    line2Parts = []
+
+    seasonText = gelatoFieldBetween(name, field.seasons, gelatoStopsExcept(bounds, field.seasons))
+    episodeText = ""
+    if Instr(1, name, field.seasons) > 0
+        episodeText = gelatoFieldBetween(name, field.episodes, [Chr(10)])
+    end if
+    seasonEp = (seasonText + " " + episodeText).Trim()
+    if seasonEp <> "" then line2Parts.push(seasonEp)
+
+    languages = gelatoFlagsToText(gelatoFieldBetween(name, field.languages, gelatoStopsExcept(bounds, field.languages)), cfg.languageFlags)
+    if languages = "" then languages = gelatoAudioLanguages(source)
+    if languages <> "" then line2Parts.push(languages)
+
+    audioTags = gelatoStripEmojis(gelatoFieldBetween(name, field.audio, gelatoStopsExcept(bounds, field.audio)))
+    channels = gelatoStripEmojis(gelatoFieldBetween(name, field.channels, gelatoStopsExcept(bounds, field.channels)))
+    audio = (audioTags + " " + channels).Trim()
+    if audio <> "" then line2Parts.push(audio)
+
+    quality = gelatoStripEmojis(gelatoFieldBetween(name, field.quality, gelatoStopsExcept(bounds, field.quality)))
+    visualTags = gelatoStripEmojis(gelatoFieldBetween(name, field.visualTags, gelatoStopsExcept(bounds, field.visualTags)))
+    qualityCombined = (quality + " " + visualTags).Trim()
+    if qualityCombined <> "" then line2Parts.push(qualityCombined)
+
+    line3Parts = []
+
+    sizeText = gelatoFieldBetween(name, field.size, gelatoStopsExcept(bounds, field.size))
+    slashPos = Instr(1, sizeText, "/")
+    if slashPos > 0 then sizeText = Left(sizeText, slashPos - 1)
+    sizeText = gelatoStripEmojis(sizeText)
+    if sizeText = "" and isValid(source) and isValid(source.Size) and source.Size > 0
+        sizeText = gelatoHumanSize(source.Size)
+    end if
+    if sizeText <> "" then line3Parts.push(sizeText)
+
+    bitrate = gelatoStripEmojis(gelatoFieldBetween(name, field.bitrate, gelatoStopsExcept(bounds, field.bitrate)))
+    if bitrate <> "" then line3Parts.push(bitrate)
+
+    group = gelatoStripEmojis(gelatoFieldBetween(name, field.releaseGroup, gelatoStopsExcept(bounds, field.releaseGroup)))
+    if group <> "" then line3Parts.push(group)
+
+    indexer = gelatoStripEmojis(gelatoFieldBetween(name, field.indexer, gelatoStopsExcept(bounds, field.indexer)))
+    if indexer <> "" then line3Parts.push(indexer)
+
+    line1 = gelatoJoin(line1Parts, "  ·  ")
+    if line1 = "" then line1 = gelatoStripEmojis(name)
+    if line1 = "" then line1 = tr("Video")
+
+    return {
+        line1: line1,
+        line2: gelatoJoin(line2Parts, "  ·  "),
+        line3: gelatoJoin(line3Parts, "  ·  ")
+    }
+end function
+
+function gelatoStopsExcept(markers as object, keep as string) as object
+    stops = [Chr(10)]
+    for each marker in markers
+        if marker <> keep then stops.push(marker)
+    end for
+    return stops
+end function
+
+function gelatoFieldBetween(text as string, startMarker as string, stopMarkers as object) as string
+    p = Instr(1, text, startMarker)
+    if p = 0 then return ""
+
+    rest = Mid(text, p + Len(startMarker))
+    cut = Len(rest) + 1
+    for each sm in stopMarkers
+        sp = Instr(1, rest, sm)
+        if sp > 0 and sp < cut then cut = sp
+    end for
+
+    if cut <= 1 then return ""
+    return Mid(rest, 1, cut - 1).Trim()
+end function
+
+function gelatoFlagsToText(text as string, flags as object) as string
+    if text = "" then return ""
+
+    result = []
+    for each flag in flags
+        if Instr(1, text, flag) > 0
+            if not inArray(result, flags[flag]) then result.push(flags[flag])
+        end if
+    end for
+
+    if result.Count() = 0 then return gelatoStripEmojis(text)
+    return gelatoJoin(result, "/")
+end function
+
+function gelatoStripEmojis(text as string) as string
+    if text = "" then return ""
+
+    re = CreateObject("roRegex", "[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{2300}-\x{23FF}\x{2100}-\x{214F}\x{FE0F}\x{200D}\x{20E3}]", "")
+    result = re.ReplaceAll(text, "")
+
+    sp = CreateObject("roRegex", " {2,}", "")
+    result = sp.ReplaceAll(result, " ")
+    return result.Trim()
+end function
+
+function gelatoExtractResolution(name as string) as string
+    line = name
+    nl = Instr(1, name, Chr(10))
+    if nl > 0 then line = Left(name, nl - 1)
+
+    low = LCase(line)
+    if Instr(1, low, "4k") > 0 or Instr(1, low, "uhd") > 0 or Instr(1, low, "2160") > 0 then return "4K UHD"
+    if Instr(1, low, "qhd") > 0 or Instr(1, low, "1440") > 0 then return "QHD"
+    if Instr(1, low, "fhd") > 0 or Instr(1, low, "1080") > 0 then return "FHD"
+    if Instr(1, low, "hd") > 0 or Instr(1, low, "720") > 0 then return "HD"
+    if Instr(1, low, "low") > 0 then return tr("Low Quality")
+
+    cleaned = gelatoStripEmojis(line)
+    if cleaned <> "" then return cleaned
+    return tr("Unknown")
+end function
+
+function gelatoAudioLanguages(source as object) as string
+    if not isValid(source) or not isValidAndNotEmpty(source.mediaStreams) then return ""
+
+    langs = []
+    for each stream in source.mediaStreams
+        if isValid(stream) and isStringEqual(stream.Type, "Audio")
+            lang = ""
+            if isValid(stream.DisplayLanguage) and (type(stream.DisplayLanguage) = "roString" or type(stream.DisplayLanguage) = "String")
+                lang = stream.DisplayLanguage
+            else if isValid(stream.Language) and (type(stream.Language) = "roString" or type(stream.Language) = "String")
+                lang = stream.Language
+            end if
+            lang = lang.Trim()
+            if lang <> "" and not inArray(langs, lang) then langs.push(lang)
+        end if
+    end for
+
+    return gelatoJoin(langs, "/")
+end function
+
+function gelatoHumanSize(bytes as longinteger) as string
+    if bytes <= 0 then return ""
+
+    gb = bytes / 1073741824.0
+    if gb >= 1
+        return (Int(gb * 10 + 0.5) / 10).ToStr() + " GB"
+    end if
+
+    mb = bytes / 1048576.0
+    return Int(mb + 0.5).ToStr() + " MB"
+end function
+
+function gelatoJoin(items as object, separator as string) as string
+    result = ""
+    for i = 0 to items.Count() - 1
+        if i > 0 then result = result + separator
+        result = result + items[i]
+    end for
+    return result
+end function

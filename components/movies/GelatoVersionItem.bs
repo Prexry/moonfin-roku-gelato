@@ -1,0 +1,46 @@
+import "pkg:/source/enums/ColorPalette.bs"
+import "pkg:/source/utils/misc.bs"
+
+sub init()
+    m.rowBackground = m.top.findNode("rowBackground")
+    m.selectedCheck = m.top.findNode("selectedCheck")
+    m.line1 = m.top.findNode("line1")
+    m.line2 = m.top.findNode("line2")
+    m.line3 = m.top.findNode("line3")
+    m.focusInAnimation = m.top.findNode("focusInAnimation")
+    m.focusOutAnimation = m.top.findNode("focusOutAnimation")
+
+    m.selectedCheck.blendColor = chainLookupReturn(m.global.session, "user.settings.colorCursor", ColorPalette.HIGHLIGHT)
+end sub
+
+sub itemContentChanged()
+    itemData = m.top.itemContent
+    if not isValid(itemData) then return
+
+    m.line1.text = isValid(itemData.title) ? itemData.title : ""
+    m.line2.text = isValid(itemData.line2) ? itemData.line2 : ""
+    m.line3.text = isValid(itemData.line3) ? itemData.line3 : ""
+
+    m.line2.visible = isValidAndNotEmpty(m.line2.text)
+    m.line3.visible = isValidAndNotEmpty(m.line3.text)
+
+    isSelected = isValid(itemData.selected) and itemData.selected
+    m.selectedCheck.visible = isSelected
+end sub
+
+sub focusChanged()
+    if m.top.itemHasFocus
+        m.focusOutAnimation.control = "stop"
+        m.focusInAnimation.control = "start"
+
+        if m.global.device.isAudioGuideEnabled = true
+            txt2Speech = CreateObject("roTextToSpeech")
+            txt2Speech.Flush()
+            txt2Speech.Say(m.line1.text)
+            if m.line2.visible then txt2Speech.Say(m.line2.text)
+        end if
+    else
+        m.focusInAnimation.control = "stop"
+        m.focusOutAnimation.control = "start"
+    end if
+end sub

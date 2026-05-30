@@ -846,6 +846,11 @@ sub onSelectedItemEvent(msg)
             if isStringEqual(type(selectedItemType), "rostring") then selectedItemType = LCase(selectedItemType)
         end if
 
+        if isValid(activeScene) and activeScene.isSubType("searchResults") and (isStringEqual(selectedItemType, ItemType.MOVIE) or isStringEqual(selectedItemType, ItemType.SERIES))
+            addItemViaGelato(selectedItem)
+            return
+        end if
+
         if isStringEqual(selectedItemType, "collectionfolder")
             onLibrarySelection(selectedItem)
         else if isStringEqual(selectedItemType, "boxset")
@@ -1029,6 +1034,48 @@ sub onSelectedItemEvent(msg)
 
     ' Clear scene tracking so we can detect return on next event
     m.lastActiveScene = invalid
+end sub
+
+sub addItemViaGelato(node as object)
+    itemName = ""
+    t = ""
+    if isChainValid(node, "title") then t = node.title
+    if (type(t) = "roString" or type(t) = "String") and t.trim() <> ""
+        itemName = t
+    else if isChainValid(node, "json.Name")
+        n = node.json.Name
+        if (type(n) = "roString" or type(n) = "String") and n.trim() <> ""
+            itemName = n
+        end if
+    end if
+    if itemName = "" then itemName = tr("item")
+
+    req = APIRequest(Substitute("Items/{0}", node.id), {
+        userid: m.global.session.user.id
+    })
+    responseJson = getJson(req)
+
+    canonicalId = node.id
+    if isChainValid(responseJson, "Id")
+        canonicalId = responseJson.Id
+    end if
+
+    cleanupTask = createObject("roSGNode", "GelatoCleanupTask")
+    cleanupTask.canonicalId = canonicalId
+    cleanupTask.serverUrl = get_url()
+    cleanupTask.userId = m.global.session.user.id
+    cleanupTask.authHeader = buildAuthHeader()
+
+    m.global.appendChild(cleanupTask)
+    cleanupTask.control = "RUN"
+
+    activeScene = m.global.sceneManager.callFunc("getActiveScene")
+    if isValid(activeScene) and activeScene.hasField("selectedItem")
+        activeScene.selectedItem = invalid
+    end if
+
+    stopLoadingSpinner()
+    message_dialog(`${tr("Added")}: ${itemName}`)
 end sub
 
 sub onMovieSelectedEvent(msg)

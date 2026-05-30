@@ -1,11 +1,8 @@
-import "pkg:/source/enums/ColorPalette.bs"
 import "pkg:/source/enums/KeyCode.bs"
 import "pkg:/source/utils/misc.bs"
 
 sub init()
     m.versionMenu = m.top.findNode("versionMenu")
-    m.versionMenu.focusBitmapBlendColor = chainLookupReturn(m.global.session, "user.settings.colorCursor", ColorPalette.HIGHLIGHT)
-    m.versionMenu.focusedColor = ColorPalette.WHITE
     m.versionMenu.observeField("itemSelected", "onVersionItemSelected")
 
     m.selectedVersionIndex = 0
@@ -28,11 +25,11 @@ sub videoTracksSet()
         selectedVersionIndex = 0
 
         for each video in m.top.videoTracks
-            entry = versionContent.CreateChild("VideoTrackListData")
+            entry = versionContent.CreateChild("GelatoVersionData")
             entry.title = video.Title
-            entry.description = video.Description
+            entry.line2 = isValid(video.Line2) ? video.Line2 : ""
+            entry.line3 = isValid(video.Line3) ? video.Line3 : ""
             entry.streamId = video.StreamID
-            entry.video_codec = video.video_codec
             entry.codec = video.codec
             if isValid(video.Selected) and video.Selected
                 selectedVersionIndex = index
@@ -43,7 +40,6 @@ sub videoTracksSet()
 
         m.versionMenu.content = versionContent
         m.versionMenu.jumpToItem = selectedVersionIndex
-        m.versionMenu.checkedItem = selectedVersionIndex
         m.selectedVersionIndex = selectedVersionIndex
     end if
 end sub
@@ -51,6 +47,11 @@ end sub
 sub onVersionItemSelected()
     selectedItem = m.versionMenu.content.getChild(m.versionMenu.itemSelected)
     if isValid(selectedItem)
+        for each child in m.versionMenu.content.getChildren(-1, 0)
+            child.selected = false
+        end for
+        selectedItem.selected = true
+
         m.top.videoStreamId = selectedItem.streamId
         m.top.codec = selectedItem.codec
         m.top.visible = false

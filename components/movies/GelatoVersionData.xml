@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component name="GelatoVersionData" extends="ContentNode">
+  <interface>
+    <field id="line2" type="string" />
+    <field id="line3" type="string" />
+    <field id="streamId" type="string" />
+    <field id="codec" type="string" />
+    <field id="selected" type="boolean" value="false" />
+  </interface>
+</component>

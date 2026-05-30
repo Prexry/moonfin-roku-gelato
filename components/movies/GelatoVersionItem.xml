@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component name="GelatoVersionItem" extends="Group">
+    <children>
+        <Poster id="rowBackground" uri="pkg:/images/hd_focus_filled.9.png"
+            loadDisplayMode="scaleToFit" width="1500" height="120"
+            blendColor="#FFFFFF" opacity="0.04" />
+
+        <Animation id="focusInAnimation" duration="0.2" repeat="false" easeFunction="inOutQuad">
+            <FloatFieldInterpolator id="bgFocusIn"
+                key="[0.0, 1.0]" keyValue="[0.04, 0.12]"
+                fieldToInterp="rowBackground.opacity" />
+        </Animation>
+        <Animation id="focusOutAnimation" duration="0.2" repeat="false" easeFunction="inOutQuad">
+            <FloatFieldInterpolator id="bgFocusOut"
+                key="[0.0, 1.0]" keyValue="[0.12, 0.04]"
+                fieldToInterp="rowBackground.opacity" />
+        </Animation>
+
+        <Poster id="selectedCheck" translation="[24, 44]" width="36" height="36"
+            uri="pkg:/images/icons/check_white.png" visible="false" />
+
+        <Group id="textContent" translation="[84, 16]">
+            <Text id="line1" font="font:MediumBoldSystemFont" color="#FFFFFF"
+                width="1380" maxLines="1" />
+            <Text id="line2" font="font:SmallSystemFont" color="#CCCCCC"
+                width="1380" maxLines="1" translation="[0, 40]" />
+            <Text id="line3" font="font:SmallestSystemFont" color="#999999"
+                width="1380" maxLines="1" translation="[0, 70]" />
+        </Group>
+    </children>
+    <interface>
+        <field id="itemContent" type="node" onChange="itemContentChanged" />
+        <field id="itemHasFocus" type="boolean" onChange="focusChanged" />
+        <field id="width" type="float" />
+    </interface>
+</component>

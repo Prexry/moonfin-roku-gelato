@@ -4,9 +4,11 @@
         <Rectangle width="1920" height="1080" color="#000000" opacity="0.75" />
         <Group translation="[100,100]">
             <Poster width="1720" height="880" uri="pkg:/images/dialog.9.png" />
-            <LayoutGroup horizAlignment="center" translation="[860,50]" itemSpacings="[50]" layoutDirection="vert">
+            <LayoutGroup horizAlignment="center" translation="[860,50]" itemSpacings="[40]" layoutDirection="vert">
                 <Text text="Select Version" font="font:LargeBoldSystemFont" color="#FFFFFF" horizAlign="center" />
-                <RadiobuttonList id="versionMenu" itemspacing="[0,10]" opacity="1" vertFocusAnimationStyle="floatingFocus" drawFocusFeedback="false" itemSize="[1500, 70]" numRows="10" />
+                <MarkupList id="versionMenu" itemComponentName="GelatoVersionItem"
+                    itemSize="[1500, 120]" itemSpacing="[0, 12]" numRows="5"
+                    vertFocusAnimationStyle="floatingFocus" drawFocusFeedback="false" />
             </LayoutGroup>
         </Group>
     </children>

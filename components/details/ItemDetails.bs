@@ -2,6 +2,7 @@ import "pkg:/source/api/Image.bs"
 import "pkg:/source/api/MoonfinPlugin.bs"
 import "pkg:/source/utils/config.bs"
 import "pkg:/source/utils/detailButtons.bs"
+import "pkg:/source/utils/gelato.bs"
 import "pkg:/source/utils/misc.bs"
 import "pkg:/source/utils/multiserver.bs"
 
@@ -211,7 +212,9 @@ sub itemContentChanged()
                 end if
             end if
         end for
-        m.top.selectedVideoStreamId = itemData.MediaSources[0].id
+        bestStreamId = selectBestMediaSourceId(itemData.MediaSources)
+        if bestStreamId = "" then bestStreamId = itemData.MediaSources[0].id
+        m.top.selectedVideoStreamId = bestStreamId
     end if
 
     if not isSeries()
@@ -1234,9 +1237,13 @@ sub SetUpVideoOptions(streams)
                 codec = streams[i].mediaStreams[0].Codec
             end if
 
+            lines = gelatoBuildStreamLines(streams[i].Name, streams[i])
+
             videos.push({
-                "Title": streams[i].Name,
-                "Description": tr("Video"),
+                "Title": lines.line1,
+                "Line2": lines.line2,
+                "Line3": lines.line3,
+                "Description": "",
                 "Selected": m.top.selectedVideoStreamId = streams[i].id,
                 "StreamID": streams[i].id,
                 "video_codec": videoCodecForDisplay,
@@ -1402,7 +1409,7 @@ sub addButtons(itemData as object)
             id: "resumeButton"
         })
 
-        if isValid(itemData.MediaSources) and itemData.MediaSources.Count() > 1
+        if isValid(itemData.MediaSources) and itemData.MediaSources.Count() >= 1
             addButton({
                 icon: "pkg:/images/icons/library.png",
                 label: "Versions",
@@ -1425,7 +1432,7 @@ sub addButtons(itemData as object)
             id: "playButton"
         })
 
-        if isValid(itemData.MediaSources) and itemData.MediaSources.Count() > 1
+        if isValid(itemData.MediaSources) and itemData.MediaSources.Count() >= 1
             addButton({
                 icon: "pkg:/images/icons/library.png",
                 label: "Versions",

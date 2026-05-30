@@ -181,6 +181,34 @@
             <translation>Video</translation>
         </message>
         <message>
+            <source>Added</source>
+            <translation>Added</translation>
+        </message>
+        <message>
+            <source>item</source>
+            <translation>item</translation>
+        </message>
+        <message>
+            <source>Ready</source>
+            <translation>Ready</translation>
+        </message>
+        <message>
+            <source>Local File</source>
+            <translation>Local File</translation>
+        </message>
+        <message>
+            <source>Not Ready</source>
+            <translation>Not Ready</translation>
+        </message>
+        <message>
+            <source>Low Quality</source>
+            <translation>Low Quality</translation>
+        </message>
+        <message>
+            <source>Unknown</source>
+            <translation>Unknown</translation>
+        </message>
+        <message>
             <source>Audio</source>
             <translation>Audio</translation>
         </message>

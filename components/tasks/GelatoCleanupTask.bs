@@ -1,0 +1,98 @@
+sub init()
+    m.top.functionName = "executeCleanup"
+end sub
+
+sub executeCleanup()
+    if m.top.canonicalId = "" or m.top.serverUrl = "" or m.top.userId = "" or m.top.authHeader = "" then return
+
+    sleep(15000)
+
+    queryReq = createObject("roUrlTransfer")
+    queryUrl = m.top.serverUrl + "/Users/" + m.top.userId + "/Items?SortBy=DateCreated&SortOrder=Descending&Limit=10&Recursive=true"
+    queryReq.setUrl(queryUrl)
+
+    if queryUrl.left(8) = "https://"
+        queryReq.setCertificatesFile("common:/certs/ca-bundle.crt")
+    end if
+
+    queryReq.AddHeader("Authorization", m.top.authHeader)
+    queryReq.AddHeader("Content-Type", "application/json")
+    queryReq.setMessagePort(CreateObject("roMessagePort"))
+
+    queryReq.AsyncGetToString()
+    queryResp = wait(10000, queryReq.GetMessagePort())
+
+    streamGuid = ""
+    if type(queryResp) = "roUrlEvent"
+        jsonStr = queryResp.GetString()
+        if jsonStr <> ""
+            json = ParseJson(jsonStr)
+            if json <> invalid and json.Items <> invalid and json.Items.Count() > 0
+                streamGuid = json.Items[0].Id
+            end if
+        end if
+    end if
+
+    if streamGuid = ""
+        cleanupSelf()
+        return
+    end if
+
+    startReq = createObject("roUrlTransfer")
+    startUrl = m.top.serverUrl + "/Sessions/Playing"
+    startReq.setUrl(startUrl)
+
+    if startUrl.left(8) = "https://"
+        startReq.setCertificatesFile("common:/certs/ca-bundle.crt")
+    end if
+
+    startReq.AddHeader("Authorization", m.top.authHeader)
+    startReq.AddHeader("Content-Type", "application/json")
+    startReq.SetRequest("POST")
+    startReq.setMessagePort(CreateObject("roMessagePort"))
+
+    data = FormatJson({
+        "ItemId": streamGuid,
+        "MediaSourceId": streamGuid,
+        "IsPaused": false,
+        "PositionTicks": 0,
+        "PlaySessionId": "gelatocleanup",
+        "AudioStreamIndex": 1,
+        "SubtitleStreamIndex": 0,
+        "IsMuted": false,
+        "VolumeLevel": 100,
+        "Brightness": 100,
+        "AspectRatio": "16x9",
+        "PlayMethod": "DirectStream",
+        "RepeatMode": "RepeatNone",
+        "CanSeek": false
+    })
+
+    startReq.AsyncPostFromString(data)
+    wait(5000, startReq.GetMessagePort())
+
+    stopReq = createObject("roUrlTransfer")
+    stopUrl = m.top.serverUrl + "/Sessions/Playing/Stopped"
+    stopReq.setUrl(stopUrl)
+
+    if stopUrl.left(8) = "https://"
+        stopReq.setCertificatesFile("common:/certs/ca-bundle.crt")
+    end if
+
+    stopReq.AddHeader("Authorization", m.top.authHeader)
+    stopReq.AddHeader("Content-Type", "application/json")
+    stopReq.SetRequest("POST")
+    stopReq.setMessagePort(CreateObject("roMessagePort"))
+
+    stopReq.AsyncPostFromString(data)
+    wait(5000, stopReq.GetMessagePort())
+
+    cleanupSelf()
+end sub
+
+sub cleanupSelf()
+    parent = m.top.getParent()
+    if parent <> invalid
+        parent.removeChild(m.top)
+    end if
+end sub

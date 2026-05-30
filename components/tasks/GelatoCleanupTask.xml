@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="GelatoCleanupTask" extends="Task">
+    <interface>
+        <field id="canonicalId" type="string" />
+        <field id="serverUrl" type="string" />
+        <field id="userId" type="string" />
+        <field id="authHeader" type="string" />
+    </interface>
+</component>
